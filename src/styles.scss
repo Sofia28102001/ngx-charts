@@ -1,1 +1,43 @@
 /* You can add global styles to this file, and also import other style files */
+
+// Global theme variables
+:root {
+  // Light theme variables
+  --bg-color-light: #ffffff;
+  --text-color-light: #333333;
+  --link-color-light: #2c3e50;
+  --link-hover-light: #3498db;
+  --sidebar-bg-light: #f5f5f5;
+  
+  // Dark theme variables
+  --bg-color-dark: #13141b;
+  --text-color-dark: #f0f1f6;
+  --link-color-dark: #a0aabe;
+  --link-hover-dark: #ffffff;
+  --sidebar-bg-dark: #1b1e27;
+}
+
+// Apply theme to body
+body {
+  margin: 0;
+  padding: 0;
+  transition: background-color 0.3s ease, color 0.3s ease;
+  
+  &.light {
+    background-color: var(--bg-color-light);
+    color: var(--text-color-light);
+    
+    a {
+      color: var(--link-color-light);
+    }
+  }
+  
+  &.dark {
+    background-color: var(--bg-color-dark);
+    color: var(--text-color-dark);
+    
+    a {
+      color: var(--link-color-dark);
+    }
+  }
+}

@@ -1,0 +1,15 @@
+<div class="sidebar" [ngClass]="currentTheme">
+  <!-- Sidebar content -->
+  <h2>Navigation</h2>
+  <ul>
+    <li><a href="#">Dashboard</a></li>
+    <li><a href="#">Analytics</a></li>
+    <li><a href="#">Charts</a></li>
+    <li><a href="#">Settings</a></li>
+  </ul>
+  
+  <!-- Optional theme toggle within sidebar -->
+  <div class="theme-toggle">
+    <button (click)="toggleTheme()">Toggle {{ currentTheme === 'light' ? 'Dark' : 'Light' }} Theme</button>
+  </div>
+</div>
