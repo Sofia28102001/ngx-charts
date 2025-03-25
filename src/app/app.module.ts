@@ -1,8 +1,8 @@
-import { BrowserModule } from '@angular/platform-browser';
 import { NgModule } from '@angular/core';
+import { BrowserModule } from '@angular/platform-browser';
+
 import { AppComponent } from './app.component';
-import { ThemeService } from './services/theme.service';
-import { SidebarComponent } from './components/sidebar/sidebar.component';
+import { SidebarComponent } from './sidebar/sidebar.component';
 
 @NgModule({
   declarations: [
@@ -11,9 +11,6 @@ import { SidebarComponent } from './components/sidebar/sidebar.component';
   ],
   imports: [
     BrowserModule
-  ],
-  providers: [
-    ThemeService
   ],
   bootstrap: [AppComponent]
 })
