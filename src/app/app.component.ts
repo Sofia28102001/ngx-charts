@@ -1,28 +1,38 @@
-import { Component } from '@angular/core';
-import { ThemeService, ThemeType } from './services/theme.service';
+import { Component, OnInit, OnDestroy } from '@angular/core';
+import { ThemeService } from './theme-service/theme.service';
+import { Subscription } from 'rxjs';
 
 @Component({
   selector: 'app-root',
   templateUrl: './app.component.html',
   styleUrls: ['./app.component.scss']
 })
-export class AppComponent {
-  theme: ThemeType = 'light';
+export class AppComponent implements OnInit, OnDestroy {
+  theme: string = 'light';
   strokeColor: string = '#000000';
+  private themeSubscription: Subscription;
 
-  constructor(private themeService: ThemeService) {
-    this.themeService.theme$.subscribe(theme => this.theme = theme);
+  constructor(private themeService: ThemeService) {}
+
+  ngOnInit(): void {
+    // Subscribe to theme changes
+    this.themeSubscription = this.themeService.theme$.subscribe(theme => {
+      this.theme = theme;
+      this.updateThemeStyles(theme);
+    });
   }
 
-  changeTheme(theme: ThemeType) {
-    this.theme = theme;
-    if (theme === 'light') {
-      this.strokeColor = '#000000';
-    } else {
-      this.strokeColor = '#ffffff';
-    }
-    
-    // Update theme in the service
+  changeTheme(theme: string) {
     this.themeService.setTheme(theme);
+  }
+
+  updateThemeStyles(theme: string): void {
+    this.strokeColor = theme === 'light' ? '#000000' : '#ffffff';
+  }
+
+  ngOnDestroy(): void {
+    if (this.themeSubscription) {
+      this.themeSubscription.unsubscribe();
+    }
   }
 }
