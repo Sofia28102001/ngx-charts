@@ -1,33 +1,41 @@
 import { Component } from '@angular/core';
-import { multi, single } from './data';
+import { single, multi, days, hours } from './data';
 
 @Component({
   selector: 'app-heat-map',
-  template: `
-    <ngx-charts-heat-map
-      [results]="single"
-      [gradient]="gradient"
-      [xAxis]="showXAxis"
-      [yAxis]="showYAxis"
-      [legend]="showLegend"
-      [showXAxisLabel]="showXAxisLabel"
-      [showYAxisLabel]="showYAxisLabel"
-      [showDataLabel]="showDataLabels"
-      (select)="onSelect($event)"
-    >
-    </ngx-charts-heat-map>
-    
-    <div class="chart-controls">
-      <label><input type="checkbox" [checked]="showDataLabels" (change)="showDataLabels = !showDataLabels" /> Show Data Labels</label>
-    </div>
-  `
+  templateUrl: './heat-map.component.html',
+  styleUrls: ['./heat-map.component.scss']
 })
 export class HeatMapComponent {
-  showYAxisLabel: boolean = true;
-  xAxisLabel: string = 'Country';
-  yAxisLabel: string = 'Products';
+  single: any[];
+  multi: any[];
   showDataLabels: boolean = false;
-  colorScheme = {
-    domain: ['#5AA454', '#A10A28', '#C7B42C', '#AAAAAA']
-  };
+  view: any[] = [700, 300];
+
+  // options
+  xAxis: boolean = true;
+  yAxis: boolean = true;
+  legend: boolean = true;
+  legendTitle: string = 'Legend';
+  legendPosition: string = 'right';
+  gradient: boolean = true;
+  tooltipDisabled: boolean = false;
+  tooltipText: any;
+
+  constructor() {
+    this.single = single;
+    this.multi = multi;
+  }
+
+  toggleDataLabels(): void {
+    this.showDataLabels = !this.showDataLabels;
+  }
+
+  select(data): void {
+    console.log('Item clicked', data);
+  }
+
+  setColorScheme(name): void {
+    // Set color scheme logic here
+  }
 }

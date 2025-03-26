@@ -1,18 +1,11 @@
-import {
-  Component,
-  Input,
-  ViewEncapsulation,
-  ChangeDetectionStrategy,
-  ContentChild,
-  TemplateRef,
-  Output,
-  EventEmitter
-} from '@angular/core';
+import { Component, Input, ViewEncapsulation, ChangeDetectionStrategy, ContentChild, TemplateRef } from '@angular/core';
 import { scaleBand } from 'd3-scale';
 
 import { BaseChartComponent } from '../common/base-chart.component';
-import { ViewDimensions } from '../common/view-dimensions.helper';
+import { ViewDimensions } from '../common/types/view-dimension.interface';
 import { ColorHelper } from '../common/color.helper';
+import { calculateViewDimensions } from '../common/view-dimensions.helper';
+import { LegendPosition } from '../common/types/legend.model';
 
 @Component({
   selector: 'ngx-charts-heat-map',
@@ -79,19 +72,22 @@ import { ColorHelper } from '../common/color.helper';
     </ngx-charts-chart>
   `,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  styleUrls: ['../common/base-chart.component.scss'],
+  styleUrls: ['./heat-map.component.scss'],
   encapsulation: ViewEncapsulation.None
 })
 export class HeatMapComponent extends BaseChartComponent {
-  @Input() legend;
+  // Add showDataLabel input
+  @Input() showDataLabel: boolean = false;
+
+  @Input() legend: boolean;
   @Input() legendTitle: string = 'Legend';
-  @Input() legendPosition: string = 'right';
-  @Input() xAxis;
-  @Input() yAxis;
-  @Input() showXAxisLabel;
-  @Input() showYAxisLabel;
-  @Input() xAxisLabel;
-  @Input() yAxisLabel;
+  @Input() legendPosition: LegendPosition = LegendPosition.Right;
+  @Input() xAxis: boolean;
+  @Input() yAxis: boolean;
+  @Input() showXAxisLabel: boolean;
+  @Input() showYAxisLabel: boolean;
+  @Input() xAxisLabel: string;
+  @Input() yAxisLabel: string;
   @Input() gradient: boolean;
   @Input() innerPadding: number | number[] = 8;
   @Input() trimXAxisTicks: boolean = true;
@@ -106,11 +102,7 @@ export class HeatMapComponent extends BaseChartComponent {
   @Input() tooltipDisabled: boolean = false;
   @Input() tooltipText: any;
   @Input() min: number;
-  
-  // Option to show data labels on heat map cells
-  @Input() showDataLabel: boolean = false;
-
-  @Output() select: EventEmitter<{ name: string; value: any }> = new EventEmitter();
+  @Input() max: number;
 
   @ContentChild('tooltipTemplate') tooltipTemplate: TemplateRef<any>;
 
@@ -142,8 +134,30 @@ export class HeatMapComponent extends BaseChartComponent {
 
     this.scaleType = this.getScaleType(this.valueDomain);
 
-    this.dims = this.calculateDims();
-    this.formatLabels();
+    this.dims = calculateViewDimensions({
+      width: this.width,
+      height: this.height,
+      margins: this.margin,
+      showXAxis: this.xAxis,
+      showYAxis: this.yAxis,
+      showXLabel: this.showXAxisLabel,
+      showYLabel: this.showYAxisLabel,
+      showLegend: this.legend,
+      legendType: this.scaleType,
+      legendPosition: this.legendPosition
+    });
+
+    if (this.scaleType === 'linear') {
+      let min = this.min;
+      let max = this.max;
+      if (!this.min) {
+        min = Math.min(0, ...this.valueDomain);
+      }
+      if (!this.max) {
+        max = Math.max(...this.valueDomain);
+      }
+      this.valueDomain = [min, max];
+    }
 
     this.xScale = this.getXScale();
     this.yScale = this.getYScale();
@@ -155,7 +169,7 @@ export class HeatMapComponent extends BaseChartComponent {
     this.rects = this.getRects();
   }
 
-  getXDomain(): any[] {
+  getXDomain(): string[] {
     const domain = [];
     for (const group of this.results) {
       if (!domain.includes(group.name)) {
@@ -166,7 +180,7 @@ export class HeatMapComponent extends BaseChartComponent {
     return domain;
   }
 
-  getYDomain(): any[] {
+  getYDomain(): string[] {
     const domain = [];
 
     for (const group of this.results) {
@@ -182,7 +196,6 @@ export class HeatMapComponent extends BaseChartComponent {
 
   getValueDomain(): any[] {
     const domain = [];
-
     for (const group of this.results) {
       for (const d of group.series) {
         if (!domain.includes(d.value)) {
@@ -190,127 +203,49 @@ export class HeatMapComponent extends BaseChartComponent {
         }
       }
     }
-
-    const min = this.min !== undefined ? this.min : Math.min(0, ...domain);
-    const max = Math.max(...domain);
-
-    return [min, max];
+    return domain;
   }
 
-  getScaleType(domain): string {
-    return this.scaleType;
+  getScaleType(valueDomain: any[]): string {
+    return valueDomain.length > 0 && typeof valueDomain[0] === 'number' ? 'linear' : 'ordinal';
   }
 
   getXScale(): any {
-    const spacing = this.xDomain.length / (this.dims.width / this.barPadding + 1);
-    return scaleBand().range([0, this.dims.width]).paddingInner(spacing).domain(this.xDomain);
+    return scaleBand().domain(this.xDomain).range([0, this.dims.width]);
   }
 
   getYScale(): any {
-    const spacing = this.yDomain.length / (this.dims.height / this.barPadding + 1);
-    return scaleBand().range([this.dims.height, 0]).paddingInner(spacing).domain(this.yDomain);
-  }
-
-  getXScaleBand(): number {
-    const bandwidth = this.xScale.bandwidth();
-    return bandwidth;
-  }
-
-  getYScaleBand(): number {
-    const bandwidth = this.yScale.bandwidth();
-    return bandwidth;
-  }
-
-  getRects(): any[] {
-    const rects = [];
-
-    this.xDomain.map(xVal => {
-      this.yDomain.map(yVal => {
-        rects.push({
-          x: this.xScale(xVal),
-          y: this.yScale(yVal),
-          rx: 3,
-          width: this.xScale.bandwidth(),
-          height: this.yScale.bandwidth(),
-          fill: 'rgba(200,200,200,0.03)'
-        });
-      });
-    });
-
-    return rects;
-  }
-
-  onClick(data): void {
-    this.select.emit(data);
+    return scaleBand().domain(this.yDomain).range([this.dims.height, 0]);
   }
 
   setColors(): void {
-    this.colors = new ColorHelper(this.scheme, this.scaleType, this.valueDomain);
+    this.colors = new ColorHelper(this.scheme, 'ordinal', this.xDomain);
   }
 
-  getLegendOptions() {
+  getLegendOptions(): any {
     return {
       scaleType: this.scaleType,
-      domain: this.valueDomain,
-      colors: this.scaleType === 'ordinal' ? this.colors : this.colors.scale,
+      colors: this.colors,
+      domain: this.xDomain,
       title: this.legendTitle,
       position: this.legendPosition
     };
   }
 
-  updateYAxisWidth({ width }): void {
-    this.yAxisWidth = width;
-    this.update();
-  }
-
-  updateXAxisHeight({ height }): void {
-    this.xAxisHeight = height;
-    this.update();
-  }
-
-  onActivate(event, group, fromLegend = false) {
-    const item = Object.assign({}, event);
-    if (group) {
-      item.series = group.name;
-    }
-
-    const items = this.results
-      .map(g => g.series)
-      .flat()
-      .filter(i => {
-        if (fromLegend) {
-          return i.label === item.name;
-        } else {
-          return i.name === item.name && i.series === item.series;
-        }
-      });
-
-    this.activeEntries = [...items];
-    this.activate.emit({ value: item, entries: this.activeEntries });
-  }
-
-  onDeactivate(event, group, fromLegend = false) {
-    const item = Object.assign({}, event);
-    if (group) {
-      item.series = group.name;
-    }
-
-    this.activeEntries = this.activeEntries.filter(i => {
-      if (fromLegend) {
-        return i.label !== item.name;
-      } else {
-        return !(i.name === item.name && i.series === item.series);
+  getRects(): any[] {
+    const rects = [];
+    for (const group of this.results) {
+      for (const d of group.series) {
+        rects.push({
+          x: this.xScale(group.name),
+          y: this.yScale(d.name),
+          width: this.xScale.bandwidth(),
+          height: this.yScale.bandwidth(),
+          fill: this.colors.getColor(d.value),
+          data: d
+        });
       }
-    });
-
-    this.deactivate.emit({ value: item, entries: this.activeEntries });
-  }
-
-  private getInnerPadding() {
-    if (typeof this.innerPadding === 'number') {
-      return this.innerPadding;
     }
-    // for backwards compatibility, if innerPadding is an array, use the first value
-    return this.innerPadding[0];
+    return rects;
   }
 }
