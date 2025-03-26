@@ -1,63 +1,38 @@
-import { TestBed, ComponentFixture } from '@angular/core/testing';
-import { Component } from '@angular/core';
-import { NoopAnimationsModule } from '@angular/platform-browser/animations';
+import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { HeatMapComponent } from './heat-map.component';
+import { NO_ERRORS_SCHEMA } from '@angular/core';
 
-import { ChartCommonModule } from '../common/chart-common.module';
-import { HeatMapModule } from './heat-map.module';
-import { ColorHelper } from '../common/color.helper';
-
-// Create a test component
-@Component({
-  selector: 'test-component',
-  template: `
-    <ngx-charts-heat-map
-      [scheme]="colorScheme"
-      [results]="data"
-      [showDataLabel]="showDataLabel">
-    </ngx-charts-heat-map>
-  `
-})
-
-class TestComponent {
-  colorScheme = {
-    domain: ['#5AA454', '#A10A28', '#C7B42C', '#AAAAAA']
-  };
-  
-  showDataLabel: boolean = true;
-
-  data = [
-    {
-      "name": "Series A",
-      "series": [
-        { "name": "Item 1", "value": 10 },
-        { "name": "Item 2", "value": 20 },
-        { "name": "Item 3", "value": 30 }
-      ]
-    }
-  ];
-}
-
-describe('HeatMapComponent', () => {
-  let fixture: ComponentFixture<TestComponent>;
-  let component: TestComponent;
+describe('<ngx-charts-heat-map>', () => {
+  let component: HeatMapComponent;
+  let fixture: ComponentFixture<HeatMapComponent>;
 
   beforeEach(() => {
     TestBed.configureTestingModule({
-      declarations: [TestComponent],
-      imports: [NoopAnimationsModule, ChartCommonModule, HeatMapModule]
-    });
-    
-    fixture = TestBed.createComponent(TestComponent);
-    component = fixture.componentInstance;
-    fixture.detectChanges();
-  });
+      declarations: [HeatMapComponent],
+      schemas: [NO_ERRORS_SCHEMA]
+    }).compileComponents();
 
-  it('should create the heat map component', () => {
-    expect(fixture.nativeElement).toBeTruthy();
+    fixture = TestBed.createComponent(HeatMapComponent);
+    component = fixture.componentInstance;
   });
 
   it('should display data labels when showDataLabel is true', () => {
+    component.showDataLabel = true;
+    fixture.detectChanges();
+    
     const labels = fixture.nativeElement.querySelectorAll('.heat-map-label');
     expect(labels.length).toBeGreaterThan(0);
+    
+    // Verify the label text matches the cell values
+    const firstCellValue = component.results[0].series[0].value;
+    expect(labels[0].textContent).toContain(firstCellValue.toLocaleString());
+  });
+  
+  it('should not display data labels when showDataLabel is false', () => {
+    component.showDataLabel = false;
+    fixture.detectChanges();
+    
+    const labels = fixture.nativeElement.querySelectorAll('.heat-map-label');
+    expect(labels.length).toBe(0);
   });
 });
