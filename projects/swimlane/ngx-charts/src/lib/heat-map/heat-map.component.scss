@@ -1,0 +1,12 @@
+.ngx-charts-heat-map {
+  .cell {
+    &.hover {
+      opacity: 0.8;
+    }
+  }
+  .heat-map-label {
+    font-size: 11px;
+    pointer-events: none;
+    dominant-baseline: central;
+  }
+}

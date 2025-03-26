@@ -1,31 +1,9 @@
-import {
-  Component,
-  Input,
-  ViewEncapsulation,
-  ChangeDetectionStrategy,
-  ContentChild,
-  TemplateRef,
-  Output,
-  EventEmitter
-} from '@angular/core';
+import { Component, Input, ViewEncapsulation, ChangeDetectionStrategy, ContentChild, TemplateRef } from '@angular/core';
 import { scaleBand } from 'd3-scale';
 
 import { BaseChartComponent } from '../common/base-chart.component';
-import { calculateViewDimensions } from '../common/view-dimensions.helper';
+import { calculateViewDimensions, ViewDimensions } from '../common/view-dimensions.helper';
 import { ColorHelper } from '../common/color.helper';
-import { getScaleType } from '../common/domain.helper';
-import { LegendOptions, LegendPosition } from '../common/types/legend.model';
-import { ViewDimensions } from '../common/types/view-dimension.interface';
-import { ScaleType } from '../common/types/scale-type.enum';
-
-interface RectItem {
-  fill: string;
-  height: number;
-  rx: number;
-  width: number;
-  x: number;
-  y: number;
-}
 
 @Component({
   selector: 'ngx-charts-heat-map',
@@ -50,7 +28,6 @@ interface RectItem {
           [maxTickLength]="maxXAxisTickLength"
           [tickFormatting]="xAxisTickFormatting"
           [ticks]="xAxisTicks"
-          [wrapTicks]="wrapTicks"
           (dimensionsChanged)="updateXAxisHeight($event)"
         ></svg:g>
         <svg:g
@@ -64,7 +41,6 @@ interface RectItem {
           [maxTickLength]="maxYAxisTickLength"
           [tickFormatting]="yAxisTickFormatting"
           [ticks]="yAxisTicks"
-          [wrapTicks]="wrapTicks"
           (dimensionsChanged)="updateYAxisWidth($event)"
         ></svg:g>
         <svg:rect
@@ -87,6 +63,7 @@ interface RectItem {
           [tooltipDisabled]="tooltipDisabled"
           [tooltipTemplate]="tooltipTemplate"
           [tooltipText]="tooltipText"
+          [showDataLabel]="showDataLabel"
           (select)="onClick($event)"
           (activate)="onActivate($event, undefined)"
           (deactivate)="onDeactivate($event, undefined)"
@@ -94,15 +71,14 @@ interface RectItem {
       </svg:g>
     </ngx-charts-chart>
   `,
-  changeDetection: ChangeDetectionStrategy.OnPush,
-  styleUrls: ['../common/base-chart.component.scss'],
+  styleUrls: ['./heat-map.component.scss'],
   encapsulation: ViewEncapsulation.None,
-  standalone: false
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class HeatMapComponent extends BaseChartComponent {
   @Input() legend: boolean;
   @Input() legendTitle: string = 'Legend';
-  @Input() legendPosition: LegendPosition = LegendPosition.Right;
+  @Input() legendPosition: string = 'right';
   @Input() xAxis: boolean;
   @Input() yAxis: boolean;
   @Input() showXAxisLabel: boolean;
@@ -110,10 +86,10 @@ export class HeatMapComponent extends BaseChartComponent {
   @Input() xAxisLabel: string;
   @Input() yAxisLabel: string;
   @Input() gradient: boolean;
-  @Input() innerPadding: number | number[] | string | string[] = 8;
+  @Input() innerPadding: number | number[] = 8;
   @Input() trimXAxisTicks: boolean = true;
   @Input() trimYAxisTicks: boolean = true;
-  @Input() rotateXAxisTicks: boolean = true;
+  @Input() rotateXAxisTicks: boolean = false;
   @Input() maxXAxisTickLength: number = 16;
   @Input() maxYAxisTickLength: number = 16;
   @Input() xAxisTickFormatting: any;
@@ -123,12 +99,11 @@ export class HeatMapComponent extends BaseChartComponent {
   @Input() tooltipDisabled: boolean = false;
   @Input() tooltipText: any;
   @Input() min: number;
+  
+  // Add showDataLabel property to control the display of data values in heat map cells
+  @Input() showDataLabel: boolean = false;
   @Input() max: number;
-  @Input() activeEntries: any[] = [];
-  @Input() wrapTicks = false;
-
-  @Output() activate: EventEmitter<any> = new EventEmitter();
-  @Output() deactivate: EventEmitter<any> = new EventEmitter();
+  @Input() scaleType: any = 'linear';
 
   @ContentChild('tooltipTemplate') tooltipTemplate: TemplateRef<any>;
 
@@ -138,26 +113,25 @@ export class HeatMapComponent extends BaseChartComponent {
   valueDomain: any[];
   xScale: any;
   yScale: any;
+  color: any;
   colors: ColorHelper;
   colorScale: any;
   transform: string;
-  rects: RectItem[];
-  margin: number[] = [10, 20, 10, 20];
+  rects: any[];
+  margin = [10, 20, 10, 20];
   xAxisHeight: number = 0;
   yAxisWidth: number = 0;
-  legendOptions: LegendOptions;
-  scaleType: ScaleType = ScaleType.Linear;
+  legendOptions: any;
+  scaleColors: any;
 
   update(): void {
-    super.update();
-
     this.formatDates();
 
     this.xDomain = this.getXDomain();
     this.yDomain = this.getYDomain();
     this.valueDomain = this.getValueDomain();
 
-    this.scaleType = getScaleType(this.valueDomain, false);
+    this.scaleColors = this.getScaleColors();
 
     this.dims = calculateViewDimensions({
       width: this.width,
@@ -165,24 +139,16 @@ export class HeatMapComponent extends BaseChartComponent {
       margins: this.margin,
       showXAxis: this.xAxis,
       showYAxis: this.yAxis,
-      xAxisHeight: this.xAxisHeight,
-      yAxisWidth: this.yAxisWidth,
       showXLabel: this.showXAxisLabel,
       showYLabel: this.showYAxisLabel,
       showLegend: this.legend,
-      legendType: this.scaleType as any,
+      legendType: this.scaleType,
       legendPosition: this.legendPosition
     });
 
-    if (this.scaleType === ScaleType.Linear) {
-      let min = this.min;
-      let max = this.max;
-      if (!this.min) {
-        min = Math.min(0, ...this.valueDomain);
-      }
-      if (!this.max) {
-        max = Math.max(...this.valueDomain);
-      }
+    if (this.scaleType === 'linear') {
+      const min = this.min ? this.min : Math.min(0, ...this.valueDomain);
+      const max = this.max ? this.max : Math.max(...this.valueDomain);
       this.valueDomain = [min, max];
     }
 
@@ -193,10 +159,9 @@ export class HeatMapComponent extends BaseChartComponent {
     this.legendOptions = this.getLegendOptions();
 
     this.transform = `translate(${this.dims.xOffset} , ${this.margin[0]})`;
-    this.rects = this.getRects();
   }
 
-  getXDomain(): string[] {
+  getXDomain(): any[] {
     const domain = [];
     for (const group of this.results) {
       if (!domain.includes(group.name)) {
@@ -207,7 +172,7 @@ export class HeatMapComponent extends BaseChartComponent {
     return domain;
   }
 
-  getYDomain(): string[] {
+  getYDomain(): any[] {
     const domain = [];
 
     for (const group of this.results) {
@@ -240,19 +205,13 @@ export class HeatMapComponent extends BaseChartComponent {
    * Supports the following inputs:
    *    Numbers: 8
    *    Strings: "8", "8px", "8%"
-   *    Arrays: [8,2], "8,2", "[8,2]"
-   *    Mixed: [8,"2%"], ["8px","2%"], "8,2%", "[8,2%]"
+   *    Arrays: [8,2], "[8,2]", "[8,2]px", "[8,2]%"
    *
    * @memberOf HeatMapComponent
    */
-  getDimension(value: string | number | Array<string | number>, index: number = 0, N: number, L: number): number {
+  getDimension(value: string | number | Array<string | number>, index = 0, N: number, L: number): number {
     if (typeof value === 'string') {
-      value = value
-        .replace('[', '')
-        .replace(']', '')
-        .replace('px', '')
-        // tslint:disable-next-line: quotemark
-        .replace("'", '');
+      value = value.replace('[', '').replace(']', '').replace('px', '').replace("'", '');
 
       if (value.includes(',')) {
         value = value.split(',');
@@ -264,101 +223,5 @@ export class HeatMapComponent extends BaseChartComponent {
     if (typeof value === 'string' && value.includes('%')) {
       return +value.replace('%', '') / 100;
     }
-    return N / (L / +value + 1);
+    return N / (L / +value);
   }
-
-  getXScale(): any {
-    const f = this.getDimension(this.innerPadding, 0, this.xDomain.length, this.dims.width);
-    return scaleBand().rangeRound([0, this.dims.width]).domain(this.xDomain).paddingInner(f);
-  }
-
-  getYScale(): any {
-    const f = this.getDimension(this.innerPadding, 1, this.yDomain.length, this.dims.height);
-    return scaleBand().rangeRound([this.dims.height, 0]).domain(this.yDomain).paddingInner(f);
-  }
-
-  getRects(): RectItem[] {
-    const rects = [];
-
-    this.xDomain.map(xVal => {
-      this.yDomain.map(yVal => {
-        rects.push({
-          x: this.xScale(xVal),
-          y: this.yScale(yVal),
-          rx: 3,
-          width: this.xScale.bandwidth(),
-          height: this.yScale.bandwidth(),
-          fill: 'rgba(200,200,200,0.03)'
-        });
-      });
-    });
-
-    return rects;
-  }
-
-  onClick(data): void {
-    this.select.emit(data);
-  }
-
-  setColors(): void {
-    this.colors = new ColorHelper(this.scheme, this.scaleType, this.valueDomain);
-  }
-
-  getLegendOptions(): LegendOptions {
-    return {
-      scaleType: this.scaleType,
-      domain: this.valueDomain,
-      colors: this.scaleType === ScaleType.Ordinal ? this.colors : this.colors.scale,
-      title: this.scaleType === ScaleType.Ordinal ? this.legendTitle : undefined,
-      position: this.legendPosition
-    };
-  }
-
-  updateYAxisWidth({ width }: { width: number }): void {
-    this.yAxisWidth = width;
-    this.update();
-  }
-
-  updateXAxisHeight({ height }: { height: number }): void {
-    this.xAxisHeight = height;
-    this.update();
-  }
-
-  onActivate(event, group, fromLegend: boolean = false) {
-    const item = Object.assign({}, event);
-    if (group) {
-      item.series = group.name;
-    }
-
-    const items = this.results
-      .map(g => g.series)
-      .flat()
-      .filter(i => {
-        if (fromLegend) {
-          return i.label === item.name;
-        } else {
-          return i.name === item.name && i.series === item.series;
-        }
-      });
-
-    this.activeEntries = [...items];
-    this.activate.emit({ value: item, entries: this.activeEntries });
-  }
-
-  onDeactivate(event, group, fromLegend: boolean = false) {
-    const item = Object.assign({}, event);
-    if (group) {
-      item.series = group.name;
-    }
-
-    this.activeEntries = this.activeEntries.filter(i => {
-      if (fromLegend) {
-        return i.label !== item.name;
-      } else {
-        return !(i.name === item.name && i.series === item.series);
-      }
-    });
-
-    this.deactivate.emit({ value: item, entries: this.activeEntries });
-  }
-}

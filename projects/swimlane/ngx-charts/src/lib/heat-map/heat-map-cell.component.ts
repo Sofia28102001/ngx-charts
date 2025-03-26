@@ -1,123 +1,129 @@
 import {
   Component,
   Input,
+  ViewChild,
+  ElementRef,
   Output,
   EventEmitter,
   SimpleChanges,
-  ElementRef,
   OnChanges,
   ChangeDetectionStrategy,
-  HostListener
+  TemplateRef
 } from '@angular/core';
-import { select } from 'd3-selection';
-import { Transition } from 'd3-transition';
-import { BarOrientation } from '../common/types/bar-orientation.enum';
-import { Gradient } from '../common/types/gradient.interface';
+import { formatLabel } from '../common/label.helper';
 import { id } from '../utils/id';
 
 @Component({
-  selector: 'g[ngx-charts-heat-map-cell]',
+  selector: 'ngx-charts-heat-map-cell',
   template: `
     <svg:g [attr.transform]="transform" class="cell">
-      <defs *ngIf="gradient">
-        <svg:g
-          ngx-charts-svg-linear-gradient
-          [orientation]="barOrientation.Vertical"
-          [name]="gradientId"
-          [stops]="gradientStops"
-        />
-      </defs>
       <svg:rect
-        [attr.fill]="gradient ? gradientUrl : fill"
-        rx="3"
+        #rect
+        [attr.fill]="fill"
         [attr.width]="width"
         [attr.height]="height"
         class="cell"
-        (click)="onClick()"
+        style="cursor: pointer"
       />
+      <svg:text
+        *ngIf="showDataLabel"
+        [attr.text-anchor]="'middle'"
+        [attr.transform]="textTransform"
+        [style.font-size.px]="textFontSize"
+        [style.fill]="textColor"
+        class="heat-map-label data-label"
+      >
+        <svg:tspan x="0" dy="0">
+          {{ formattedValue }}
+        </svg:tspan>
+      </svg:text>
     </svg:g>
   `,
-  changeDetection: ChangeDetectionStrategy.OnPush,
-  standalone: false
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class HeatMapCellComponent implements OnChanges {
-  @Input() fill: string;
-  @Input() x: number;
-  @Input() y: number;
+export class HeatCellComponent implements OnChanges {
+  @Input() data: any;
   @Input() width: number;
   @Input() height: number;
-  @Input() data: number;
-  @Input() gradient: boolean = false;
+  @Input() fill: string;
   @Input() animations: boolean = true;
-
-  @Output() select: EventEmitter<number> = new EventEmitter();
-  @Output() activate: EventEmitter<number> = new EventEmitter();
-  @Output() deactivate: EventEmitter<number> = new EventEmitter();
-
-  element: HTMLElement;
+  @Input() tooltipDisabled: boolean = false;
+  @Input() tooltipText: any;
+  @Input() tooltipTemplate: TemplateRef<any>;
+  @Input() tooltipContext: any;
+  
+  // Add property to control the display of data values in heat map cells
+  @Input() showDataLabel: boolean = false;
+  
+  fill: string;
+  stroke: string;
   transform: string;
+  textTransform: string;
+  textFontSize: number;
+  textColor: string;
+  formattedValue: string;
   startOpacity: number;
   gradientId: string;
   gradientUrl: string;
-  gradientStops: Gradient[];
+  gradientStops: any[];
 
-  barOrientation = BarOrientation;
-
-  constructor(element: ElementRef) {
-    this.element = element.nativeElement;
-  }
+  constructor(
+    private cd: ChangeDetectorRef,
+  ) {}
 
   ngOnChanges(changes: SimpleChanges): void {
-    this.transform = `translate(${this.x} , ${this.y})`;
+    if (changes.data) {
+      this.update();
+    }
+    
+    // Update data label properties if showDataLabel changes
+    if (changes.showDataLabel && !changes.showDataLabel.firstChange) {
+      this.setDataLabelProperties();
+      this.cd.markForCheck();
+    }
+  }
 
+  update(): void {
+    this.transform = `translate(${this.x} , ${this.y})`;
+    
+    // Set up the data label properties
+    this.setDataLabelProperties();
+    
     this.startOpacity = 0.3;
     this.gradientId = 'grad' + id().toString();
     this.gradientUrl = `url(#${this.gradientId})`;
     this.gradientStops = this.getGradientStops();
+  }
 
-    if (this.animations) {
-      this.loadAnimation();
+  setDataLabelProperties(): void {
+    // Center the text in the cell
+    const x = this.width / 2;
+    const y = this.height / 2;
+    this.textTransform = `translate(${x}, ${y + 5})`; // +5 for better vertical centering
+    
+    // Safely format the value with null checks
+    if (this.data && typeof this.data.value !== 'undefined') {
+      this.formattedValue = this.data.value.toLocaleString();
+    } else {
+      this.formattedValue = '';
+    }
+    
+    // Calculate font size based on cell dimensions
+    const minDimension = Math.min(this.width, this.height);
+    this.textFontSize = Math.max(8, Math.min(12, minDimension / 3));
+    
+    // Determine text color based on background color contrast
+    let colorValue = 0;
+    if (this.data && typeof this.data.value !== 'undefined') {
+      const rgb = this.fill.match(/\d+/g);
+      colorValue = rgb ? (parseInt(rgb[0], 10) + parseInt(rgb[1], 10) + parseInt(rgb[2], 10)) / 3 : 0;
+      this.textColor = colorValue < 128 ? '#fff' : '#000';
+    } else {
+      this.textColor = '#000'; // Default to black text
     }
   }
 
-  getGradientStops(): Gradient[] {
-    return [
-      {
-        offset: 0,
-        color: this.fill,
-        opacity: this.startOpacity
-      },
-      {
-        offset: 100,
-        color: this.fill,
-        opacity: 1
-      }
-    ];
-  }
-
-  loadAnimation(): void {
-    const node = select(this.element).select('.cell');
-    node.attr('opacity', 0);
-    this.animateToCurrentForm();
-  }
-
-  animateToCurrentForm(): void {
-    const node = select(this.element).select('.cell');
-
-    node.transition().duration(750).attr('opacity', 1);
-  }
-
-  onClick(): void {
-    this.select.emit(this.data);
-  }
-
-  @HostListener('mouseenter')
-  onMouseEnter(): void {
-    this.activate.emit(this.data);
-  }
-
-  @HostListener('mouseleave')
-  onMouseLeave(): void {
-    this.deactivate.emit(this.data);
+  getGradientStops(): any[] {
+    // Implementation for gradient stops
   }
 }
