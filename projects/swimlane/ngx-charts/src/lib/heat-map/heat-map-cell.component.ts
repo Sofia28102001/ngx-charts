@@ -1,12 +1,14 @@
-import { Component, Input, Output, EventEmitter, SimpleChanges, OnChanges, ChangeDetectionStrategy } from '@angular/core';
-import { formatLabel } from '../common/label.helper';
-import { PlacementTypes } from '../common/tooltip/position';
-import { StyleTypes } from '../common/tooltip/style.type';
-import { ViewDimensions } from '../common/types/view-dimension.interface';
-import { ColorHelper } from '../common/color.helper';
-import { id } from '../utils/id';
-import { DataItem } from '../models/chart-data.model';
-import { trimLabel } from '../common/trim-label.helper';
+import {
+  Component,
+  Input,
+  OnChanges,
+  ElementRef,
+  TemplateRef,
+  ChangeDetectionStrategy
+} from '@angular/core';
+import { select } from 'd3-selection';
+import { transition } from 'd3-transition';
+import { formatLabel, trimLabel } from '../common/label.helper';
 
 @Component({
   selector: 'g[ngx-charts-heat-map-cell]',
@@ -17,89 +19,69 @@ import { trimLabel } from '../common/trim-label.helper';
       [attr.width]="width"
       [attr.height]="height"
       [attr.fill]="fill"
-      [style.cursor]="'pointer'"
+      [attr.stroke]="stroke"
+      [attr.stroke-width]="strokeWidth"
+      [attr.stroke-dasharray]="strokeDasharray"
       (click)="onClick()"
-    ></svg:rect>
+    />
     <svg:text
       *ngIf="showDataLabel"
+      [style.font-size.px]="textFontSize"
+      [style.textAnchor]="'middle'"
+      [attr.transform]="textTransform"
+      [style.fill]="textColor"
       class="cell-data-label"
-      [attr.x]="textX"
-      [attr.y]="textY"
-      [attr.text-anchor]="'middle'"
-      [attr.dominant-baseline]="'central'"
-      [attr.fill]="textFontColor">
-      {{ formattedLabel }}
+    >
+      <svg:tspan x="0" dy="0">
+        {{formattedLabel}}
+      </svg:tspan>
     </svg:text>
+    <svg:title *ngIf="tooltipDisabled !== true">{{ tooltipText }}</svg:title>
   `,
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class HeatMapCellComponent implements OnChanges {
-  @Input() x: number;
-  @Input() y: number;
-  @Input() width: number;
-  @Input() height: number;
-  @Input() fill: string;
-  @Input() data: any;
+  @Input() gradient: boolean;
+  @Input() animations: boolean = true;
   @Input() tooltipDisabled: boolean = false;
-  @Input() tooltipText: any;
-  @Input() gradient: boolean = false;
+  @Input() tooltipText: string;
   @Input() showDataLabel: boolean = false;
 
-  @Output() select = new EventEmitter();
+  // Additional properties for label rendering
+  textFontSize: number = 12;
+  textColor: string;
+  textTransform: string;
+  formattedLabel: string;
 
-  // Dims
-  textX: number;
-  textY: number;
-  textFontColor: string;
+  constructor(protected element: ElementRef) {}
 
   ngOnChanges(changes: SimpleChanges): void {
-    this.update();
-    this.updateLabelPosition();
-    this.checkToHideBar();
+    // Existing logic for handling changes
+    if (this.showDataLabel) {
+      const value = this.data?.value;
+      this.formattedLabel = value !== undefined ? formatLabel(value) : '';
+      
+      // Ensure label fits in cell
+      if (this.formattedLabel.length > 7) {
+        this.formattedLabel = trimLabel(this.formattedLabel, 7);
+      }
+      
+      this.textFontSize = Math.min(12, this.height / 2);
+      this.textTransform = `translate(${this.x + this.width / 2}, ${this.y + this.height / 2 + this.textFontSize / 3})`;
+      this.textColor = this.getTextColor();
+    }
   }
 
-  updateLabelPosition(): void {
-    if (!this.showDataLabel) {
-      return;
-    }
-    this.textX = this.x + this.width / 2;
-    this.textY = this.y + this.height / 2;
-    this.textFontColor = this.getTextColor(this.fill);
-  }
-
-  getTextColor(backgroundColor: string): string {
-    const rgb = this.hexToRgb(backgroundColor);
-    if (!rgb) {
-      return '#000000';
-    }
-    const brightness = (0.299 * rgb.r + 0.587 * rgb.g + 0.114 * rgb.b) / 255;
-    return brightness > 0.7 ? '#000000' : '#FFFFFF';
-  }
-
-  hexToRgb(hex: string): { r: number; g: number; b: number } | null {
-    if (!hex || typeof hex !== 'string') {
-      return null;
-    }
-    hex = hex.replace('#', '');
-    if (!/^[0-9A-Fa-f]{3}$|^[0-9A-Fa-f]{6}$/.test(hex)) {
-      return null;
-    }
-    if (hex.length === 3) {
-      hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
-    }
-    return {
-      r: parseInt(hex.substring(0, 2), 16),
-      g: parseInt(hex.substring(2, 4), 16),
-      b: parseInt(hex.substring(4, 6), 16)
-    };
-  }
-
-  get formattedLabel(): string {
-    if (!this.data || this.data.value === undefined || this.data.value === null) {
-      return '';
-    }
-    const value = this.data.value;
-    const formatted = typeof value === 'number' && !Number.isInteger(value) ? value.toFixed(1) : value.toString();
-    return trimLabel(formatted, 8);
+  private getTextColor(): string {
+    if (!this.fill) return '#000000';
+    
+    // Convert hex to RGB
+    const hex = this.fill.replace('#', '');
+    const r = parseInt(hex.substr(0, 2), 16);
+    const g = parseInt(hex.substr(2, 2), 16);
+    const b = parseInt(hex.substr(4, 2), 16);
+    
+    // YIQ formula to determine contrast
+    return (r * 299 + g * 587 + b * 114) / 1000 >= 128 ? '#000000' : '#ffffff';
   }
 }

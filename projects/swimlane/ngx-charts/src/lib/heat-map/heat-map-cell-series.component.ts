@@ -1,42 +1,34 @@
-import { Component, Input, Output, EventEmitter, OnChanges, SimpleChanges } from '@angular/core';
-import { formatLabel } from '../common/label.helper';
-import { PlacementTypes } from '../common/tooltip/position';
-import { StyleTypes } from '../common/tooltip/style.type';
-import { DataItem } from '../models/chart-data.model';
+import {
+  Component,
+  Input,
+  OnChanges,
+  SimpleChanges
+} from '@angular/core';
+import { ColorHelper } from '../common/color.helper';
 
 @Component({
   selector: 'ngx-charts-heat-map-cell-series',
   template: `
-    <svg:g
-      class="heat-map-cell-series-group"
-      [attr.transform]="transform"
-      [attr.id]="cells[0]?.data?.series"
-    >
-      <svg:g
-        ngx-charts-heat-map-cell
-        *ngFor="let c of cells; trackBy: trackBy"
-        [attr.transform]="c.transform"
-        [data]="c.data"
-        [width]="c.width"
-        [height]="c.height"
-        [tooltipDisabled]="tooltipDisabled"
-        [tooltipTemplate]="tooltipTemplate"
-        [tooltipText]="tooltipText"
-        [showDataLabel]="showDataLabel"
-        (select)="onSelect(c.data)"
-      ></svg:g>
-    </svg:g>
-  `,
-  styles: []
+    <svg:g ngx-charts-heat-map-cell
+      *ngFor="let cell of data"
+      [data]="cell"
+      [label]="cell.label"
+      [gradient]="gradient"
+      [animations]="animations"
+      [tooltipDisabled]="tooltipDisabled"
+      [tooltipText]="tooltipText"
+      [showDataLabel]="showDataLabel"
+    />
+  `
 })
-export class HeatCellSeriesComponent implements OnChanges {
-  @Input() cells: DataItem[];
+export class HeatMapCellSeriesComponent implements OnChanges {
+  @Input() colors: ColorHelper;
   @Input() tooltipDisabled: boolean = false;
   @Input() tooltipText: any;
-  @Input() tooltipTemplate: TemplateRef<any>;
   @Input() showDataLabel: boolean = false;
-
-  @Output() select = new EventEmitter();
+  @Input() tooltipTemplate: TemplateRef<any>;
+  @Input() animations: boolean = true;
+  @Input() gradient: boolean;
 
   ngOnChanges(changes: SimpleChanges): void {
     // Handle changes if necessary
