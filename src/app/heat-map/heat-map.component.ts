@@ -1,5 +1,4 @@
 import { Component, OnInit } from '@angular/core';
-import { colorSets } from '../../../projects/swimlane/ngx-charts/src/lib/utils/color-sets';
 
 @Component({
   selector: 'app-heat-map',
@@ -7,15 +6,12 @@ import { colorSets } from '../../../projects/swimlane/ngx-charts/src/lib/utils/c
   styleUrls: ['./heat-map.component.scss']
 })
 export class HeatMapComponent implements OnInit {
-  colorSets: any[];
-  colorScheme: any;
-  schemeType = 'ordinal';
-  showDataLabel: boolean = false;
-  selectedColorScheme: string;
+  showYAxis = true;
+  showXAxisLabel = true;
+  showYAxisLabel = true;
+  showDataLabels = false; // New property for data labels
+  xAxisLabel = 'Country';
+  yAxisLabel = 'Products';
 
-  dims: ViewDimensions;
-
-  ngOnInit() {
-    this.colorSets = colorSets;
-  }
+  // Additional properties and methods...
 }

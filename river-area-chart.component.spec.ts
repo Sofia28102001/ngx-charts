@@ -1,0 +1,1 @@
+Test file for the River Area Chart component, ensuring it renders correctly and displays expected elements.

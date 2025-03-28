@@ -1,0 +1,1 @@
+Module file to declare and export the River Area Chart and Series components.

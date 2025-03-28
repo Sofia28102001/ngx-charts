@@ -1,0 +1,1 @@
+Updated main module to include the River Area Chart module.

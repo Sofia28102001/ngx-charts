@@ -1,36 +1,44 @@
-import {
-  Component,
-  Input,
-  OnChanges,
-  SimpleChanges
-} from '@angular/core';
-import { ColorHelper } from '../common/color.helper';
+import { Component, Input, Output, EventEmitter, OnChanges } from '@angular/core';
+import { HeatMapCellComponent } from './heat-map-cell.component';
 
 @Component({
   selector: 'ngx-charts-heat-map-cell-series',
   template: `
-    <svg:g ngx-charts-heat-map-cell
-      *ngFor="let cell of data"
-      [data]="cell"
-      [label]="cell.label"
-      [gradient]="gradient"
-      [animations]="animations"
-      [tooltipDisabled]="tooltipDisabled"
-      [tooltipText]="tooltipText"
-      [showDataLabel]="showDataLabel"
-    />
-  `
+    <svg:g *ngFor="let cell of data">
+      <ngx-charts-heat-map-cell
+        [x]="xScale(cell.name)"
+        [y]="yScale(cell.series)"
+        [width]="xScale.bandwidth()"
+        [height]="yScale.bandwidth()"
+        [fill]="colors.getColor(cell.value)"
+        [data]="cell"
+        [tooltipDisabled]="tooltipDisabled"
+        [tooltipText]="tooltipText"
+        [showDataLabel]="showDataLabel"
+        [dataLabelFormatting]="dataLabelFormatting"
+        (select)="select.emit(cell)"
+        (activate)="activate.emit(cell)"
+        (deactivate)="deactivate.emit(cell)"
+      />
+    </svg:g>
+  `,
+  styleUrls: ['./heat-map-cell-series.component.scss']
 })
 export class HeatMapCellSeriesComponent implements OnChanges {
-  @Input() colors: ColorHelper;
+  @Input() data: any[];
+  @Input() xScale: any;
+  @Input() yScale: any;
+  @Input() colors: any;
   @Input() tooltipDisabled: boolean = false;
   @Input() tooltipText: any;
   @Input() showDataLabel: boolean = false;
-  @Input() tooltipTemplate: TemplateRef<any>;
-  @Input() animations: boolean = true;
-  @Input() gradient: boolean;
+  @Input() dataLabelFormatting: any;
 
-  ngOnChanges(changes: SimpleChanges): void {
-    // Handle changes if necessary
+  @Output() select = new EventEmitter();
+  @Output() activate = new EventEmitter();
+  @Output() deactivate = new EventEmitter();
+
+  ngOnChanges() {
+    // Handle changes
   }
 }

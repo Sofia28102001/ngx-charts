@@ -1,0 +1,12 @@
+.heat-map {
+  .cell {
+    user-select: none;
+  }
+
+  text {
+    fill: #fff;
+    font-weight: 400;
+    pointer-events: none;
+    text-shadow: -1px -1px 0 rgba(0, 0, 0, 0.3), 1px -1px 0 rgba(0, 0, 0, 0.3), -1px 1px 0 rgba(0, 0, 0, 0.3), 1px 1px 0 rgba(0, 0, 0, 0.3);
+  }
+}

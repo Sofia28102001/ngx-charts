@@ -1,0 +1,1 @@
+Added showDataLabel, dataLabelFormatting, and dataLabelFontSize properties.

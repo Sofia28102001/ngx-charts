@@ -1,0 +1,1 @@
+Implementation of the River Area Series component to render the area series within the chart.
